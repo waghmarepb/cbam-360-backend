@@ -97,19 +97,22 @@ export function createRateLimiter(name: string, options: Partial<RateLimiterOpti
 export const authRateLimiter = createRateLimiter('auth', {
   windowMs: 15 * 60 * 1000, // 15 minutes
   maxRequests: 10, // 10 login attempts per 15 minutes
-  message: 'Too many login attempts, please try again later.'
+  message: 'Too many login attempts, please try again later.',
+  skip: (req) => req.method === 'OPTIONS' // Skip preflight requests
 });
 
 export const apiRateLimiter = createRateLimiter('api', {
   windowMs: 60 * 1000, // 1 minute
   maxRequests: 60, // 60 requests per minute
-  message: 'Rate limit exceeded. Please slow down.'
+  message: 'Rate limit exceeded. Please slow down.',
+  skip: (req) => req.method === 'OPTIONS' // Skip preflight requests
 });
 
 export const uploadRateLimiter = createRateLimiter('upload', {
   windowMs: 60 * 60 * 1000, // 1 hour
   maxRequests: 50, // 50 uploads per hour
-  message: 'Upload limit exceeded. Please try again later.'
+  message: 'Upload limit exceeded. Please try again later.',
+  skip: (req) => req.method === 'OPTIONS' // Skip preflight requests
 });
 
 export default createRateLimiter;

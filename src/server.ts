@@ -24,6 +24,28 @@ connectDB().then(async () => {
   await seedVenusWireData(); // Seed Venus Wire Industries demo data
 });
 
+// Handle OPTIONS preflight requests FIRST - before any other middleware
+app.options('*', (req, res) => {
+  const allowedOrigins = [
+    'https://cbam-360-frontend.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ];
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin || process.env.NODE_ENV !== 'production') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.status(204).end();
+});
+
 // Security middleware
 app.use(removePoweredBy);
 app.use(securityHeaders);
