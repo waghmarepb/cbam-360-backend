@@ -71,14 +71,18 @@ app.use('/api', apiRateLimiter);
 // Ensure database connection for serverless (before API routes)
 app.use('/api', async (req, res, next) => {
   try {
+    console.log('Attempting database connection...');
     await ensureConnection();
+    console.log('Database connection successful');
     next();
   } catch (error: any) {
-    console.error('Database connection error:', error);
+    console.error('Database connection error:', error?.message || error);
+    console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     res.status(503).json({
       success: false,
       message: 'Database connection failed',
-      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+      details: error?.message || 'Unknown error',
+      mongoUri: process.env.MONGODB_URI ? 'Set (hidden)' : 'NOT SET - using fallback'
     });
   }
 });

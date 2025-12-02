@@ -5,34 +5,47 @@ let connectionPromise: Promise<typeof mongoose> | null = null;
 let isConnected = false;
 
 const connectDB = async (): Promise<void> => {
+  console.log('connectDB called, readyState:', mongoose.connection.readyState, 'isConnected:', isConnected);
+
   // If already connected, return immediately
   if (isConnected && mongoose.connection.readyState === 1) {
     console.log('Using existing MongoDB connection');
     return;
   }
 
-  // If connection is in progress, wait for it
+  // If connection is in progress, wait for it (with timeout)
   if (connectionPromise) {
-    await connectionPromise;
-    return;
+    console.log('Connection in progress, waiting...');
+    try {
+      await Promise.race([
+        connectionPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection wait timeout')), 10000))
+      ]);
+      return;
+    } catch (e) {
+      console.log('Connection wait failed, retrying...');
+      connectionPromise = null;
+    }
   }
 
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://waghmarepb_db_user:Z8bfCovJWHe1gkUZ@cluster0.dhgdel3.mongodb.net/cbam360?retryWrites=true&w=majority&appName=Cluster0';
+
+    console.log('Connecting to MongoDB...', mongoURI ? 'URI present' : 'URI missing');
 
     // Set mongoose options for serverless
     mongoose.set('bufferCommands', false);
 
     connectionPromise = mongoose.connect(mongoURI, {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
     });
 
     await connectionPromise;
     isConnected = true;
 
-    console.log('✅ MongoDB connected successfully');
+    console.log('✅ MongoDB connected successfully, readyState:', mongoose.connection.readyState);
 
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB connection error:', err);
@@ -45,8 +58,8 @@ const connectDB = async (): Promise<void> => {
       connectionPromise = null;
     });
 
-  } catch (error) {
-    console.error('❌ MongoDB connection failed:', error);
+  } catch (error: any) {
+    console.error('❌ MongoDB connection failed:', error?.message || error);
     isConnected = false;
     connectionPromise = null;
     // Don't exit in serverless environment - let individual requests handle connection errors
