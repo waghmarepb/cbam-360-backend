@@ -4,16 +4,16 @@ import { Request, Response, NextFunction } from 'express';
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
   // Prevent clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-  
+
   // Prevent MIME type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  
+
   // Enable XSS filter
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
+
   // Referrer policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   // Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
@@ -25,7 +25,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "connect-src 'self' https:; " +
     "frame-ancestors 'none';"
   );
-  
+
   // Strict Transport Security (HSTS)
   if (process.env.NODE_ENV === 'production') {
     res.setHeader(
@@ -33,13 +33,13 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       'max-age=31536000; includeSubDomains; preload'
     );
   }
-  
+
   // Permissions Policy
   res.setHeader(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   );
-  
+
   next();
 }
 
@@ -51,11 +51,21 @@ export function removePoweredBy(req: Request, res: Response, next: NextFunction)
 
 // CORS configuration for production
 export function corsConfig() {
-  // Support both FRONTEND_URL and ALLOWED_ORIGINS
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const additionalOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
-  const allowedOrigins = [frontendUrl, ...additionalOrigins].filter(Boolean);
-  
+  // Default allowed origins (always include Vercel frontend)
+  const defaultOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://cbam-360-frontend.vercel.app'
+  ];
+
+  // Support both FRONTEND_URL and ALLOWED_ORIGINS from environment
+  const frontendUrl = process.env.FRONTEND_URL;
+  const additionalOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : [];
+
+  const allowedOrigins = [...defaultOrigins, frontendUrl, ...additionalOrigins].filter(Boolean) as string[];
+
+  console.log('CORS allowed origins:', allowedOrigins);
+
   return {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       // Allow requests with no origin (like mobile apps, curl, or Vercel serverless)
@@ -63,17 +73,22 @@ export function corsConfig() {
         callback(null, true);
         return;
       }
-      
+
       // In development, allow all origins
       if (process.env.NODE_ENV !== 'production') {
         callback(null, true);
         return;
       }
-      
-      if (allowedOrigins.some(allowed => origin.startsWith(allowed) || allowed.includes(origin))) {
+
+      // Check if origin is in allowed list
+      const isAllowed = allowedOrigins.some(allowed =>
+        origin === allowed || origin.startsWith(allowed) || allowed.includes(origin)
+      );
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        console.warn(`CORS blocked origin: ${origin}`);
+        console.warn(`CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -81,7 +96,9 @@ export function corsConfig() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-    maxAge: 86400 // 24 hours
+    maxAge: 86400, // 24 hours
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   };
 }
 
