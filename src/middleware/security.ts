@@ -51,19 +51,29 @@ export function removePoweredBy(req: Request, res: Response, next: NextFunction)
 
 // CORS configuration for production
 export function corsConfig() {
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',');
+  // Support both FRONTEND_URL and ALLOWED_ORIGINS
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const additionalOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+  const allowedOrigins = [frontendUrl, ...additionalOrigins].filter(Boolean);
   
   return {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      // Allow requests with no origin (like mobile apps or curl)
+      // Allow requests with no origin (like mobile apps, curl, or Vercel serverless)
       if (!origin) {
         callback(null, true);
         return;
       }
       
-      if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      // In development, allow all origins
+      if (process.env.NODE_ENV !== 'production') {
+        callback(null, true);
+        return;
+      }
+      
+      if (allowedOrigins.some(allowed => origin.startsWith(allowed) || allowed.includes(origin))) {
         callback(null, true);
       } else {
+        console.warn(`CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },

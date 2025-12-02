@@ -61,9 +61,10 @@ app.get('/', (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
+// Start server only if not running on Vercel (serverless)
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`
   ╔═══════════════════════════════════════════════╗
   ║                                               ║
   ║   🌍 CBAM360 API Server                       ║
@@ -73,8 +74,11 @@ app.listen(PORT, () => {
   ║   🔧 Environment: ${process.env.NODE_ENV || 'development'}              ║
   ║                                               ║
   ╚═══════════════════════════════════════════════╝
-  `);
-});
+    `);
+  });
+}
 
+// Export for Vercel serverless
 export default app;
+module.exports = app;
 
