@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import connectDB from './config/database';
+import connectDB, { ensureConnection } from './config/database';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { securityHeaders, removePoweredBy, corsConfig } from './middleware/security';
@@ -17,12 +17,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connect to MongoDB and seed data
-connectDB().then(async () => {
-  await seedCNCodes();
-  await seedEmissionFactors();
-  await seedVenusWireData(); // Seed Venus Wire Industries demo data
-});
+// For non-serverless: Connect to MongoDB and seed data at startup
+if (process.env.VERCEL !== '1') {
+  connectDB().then(async () => {
+    await seedCNCodes();
+    await seedEmissionFactors();
+    await seedVenusWireData();
+  });
+}
 
 // Handle OPTIONS preflight requests FIRST - before any other middleware
 app.options('*', (req, res) => {
@@ -65,6 +67,21 @@ app.use(requestLogger({
 // Rate limiting
 app.use('/api/auth', authRateLimiter);
 app.use('/api', apiRateLimiter);
+
+// Ensure database connection for serverless (before API routes)
+app.use('/api', async (req, res, next) => {
+  try {
+    await ensureConnection();
+    next();
+  } catch (error: any) {
+    console.error('Database connection error:', error);
+    res.status(503).json({
+      success: false,
+      message: 'Database connection failed',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
+  }
+});
 
 // API Routes
 app.use('/api', routes);

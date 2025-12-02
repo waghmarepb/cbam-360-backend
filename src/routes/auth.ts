@@ -221,11 +221,12 @@ router.post('/login', loginValidation, async (req: AuthRequest, res: Response) =
         refreshToken
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Login failed'
+      message: 'Login failed',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined
     });
   }
 });
