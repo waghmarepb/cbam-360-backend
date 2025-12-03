@@ -55,12 +55,12 @@ const reportingPeriodSchema = new Schema<IReportingPeriod>(
       default: ReportingStatus.DRAFT
     },
     startDate: {
-      type: Date,
-      required: [true, 'Start date is required']
+      type: Date
+      // Calculated automatically in pre-save hook based on quarter
     },
     endDate: {
-      type: Date,
-      required: [true, 'End date is required']
+      type: Date
+      // Calculated automatically in pre-save hook based on quarter
     },
     submittedAt: {
       type: Date
@@ -92,7 +92,8 @@ reportingPeriodSchema.virtual('displayName').get(function (this: IReportingPerio
 
 // Pre-save hook to calculate start and end dates based on quarter
 reportingPeriodSchema.pre('save', function (next) {
-  if (this.isModified('year') || this.isModified('quarter')) {
+  // Calculate dates for new documents or when year/quarter changes
+  if (this.isNew || this.isModified('year') || this.isModified('quarter')) {
     const year = this.year;
     
     switch (this.quarter) {

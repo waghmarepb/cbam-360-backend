@@ -15,14 +15,14 @@ router.use(authenticate);
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { year, status } = req.query;
-    const orgId = req.user?.organisation;
+    const orgId = req.user?.organisation?._id || req.user?.organisation;
 
     const filter: Record<string, unknown> = { organisation: orgId };
-    
+
     if (year) {
       filter.year = Number(year);
     }
-    
+
     if (status) {
       filter.status = status;
     }
@@ -49,8 +49,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // @access  Private
 router.get('/current', async (req: AuthRequest, res: Response) => {
   try {
-    const orgId = req.user?.organisation;
-    
+    const orgId = req.user?.organisation?._id || req.user?.organisation;
+
     // Find the most recent non-submitted period, or create Q1 of current year
     let period = await ReportingPeriod.findOne({
       organisation: orgId,
@@ -158,7 +158,18 @@ router.post(
       }
 
       const { year, quarter, notes } = req.body;
-      const orgId = req.user?.organisation;
+      // Get organisation ID (handle both populated object and ObjectId)
+      const orgId = req.user?.organisation?._id || req.user?.organisation;
+
+      console.log('Creating reporting period:', { year, quarter, orgId, userId: req.user?._id });
+
+      if (!orgId) {
+        res.status(400).json({
+          success: false,
+          message: 'User organisation not found'
+        });
+        return;
+      }
 
       // Check if period already exists
       const existing = await ReportingPeriod.findOne({
@@ -231,7 +242,7 @@ router.put(
       }
 
       const period = await ReportingPeriod.findOneAndUpdate(
-        { _id: req.params.id, organisation: req.user?.organisation },
+        { _id: req.params.id, organisation: req.user?.organisation?._id || req.user?.organisation },
         { $set: updateData },
         { new: true, runValidators: true }
       );
@@ -326,7 +337,7 @@ function getCurrentQuarter(): Quarter {
 function getNextPeriod(year: number, quarter: Quarter): { year: number; quarter: Quarter } {
   const quarters = [Quarter.Q1, Quarter.Q2, Quarter.Q3, Quarter.Q4];
   const currentIndex = quarters.indexOf(quarter);
-  
+
   if (currentIndex === 3) {
     return { year: year + 1, quarter: Quarter.Q1 };
   }
