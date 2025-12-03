@@ -70,9 +70,11 @@ export const authenticate = async (
       return;
     }
 
+    console.error('Authentication error:', error);
     res.status(500).json({
       success: false,
-      message: 'Authentication error.'
+      message: 'Authentication error.',
+      error: process.env.NODE_ENV !== 'production' ? String(error) : undefined
     });
   }
 };

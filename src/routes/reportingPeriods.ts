@@ -188,11 +188,13 @@ router.post(
         message: 'Reporting period created successfully',
         data: period
       });
-    } catch (error) {
-      console.error('Create period error:', error);
+    } catch (error: any) {
+      console.error('Create period error:', error?.message || error);
+      console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       res.status(500).json({
         success: false,
-        message: 'Failed to create reporting period'
+        message: 'Failed to create reporting period',
+        error: process.env.NODE_ENV !== 'production' ? error?.message : undefined
       });
     }
   }
