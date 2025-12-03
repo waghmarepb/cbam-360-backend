@@ -29,7 +29,11 @@ const connectDB = async (): Promise<void> => {
   }
 
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://waghmarepb_db_user:Z8bfCovJWHe1gkUZ@cluster0.dhgdel3.mongodb.net/cbam360?retryWrites=true&w=majority&appName=Cluster0';
+    const mongoURI = process.env.MONGODB_URI;
+
+    if (!mongoURI) {
+      throw new Error('MONGODB_URI environment variable is not set');
+    }
 
     console.log('Connecting to MongoDB...', mongoURI ? 'URI present' : 'URI missing');
 
